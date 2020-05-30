@@ -6,15 +6,18 @@ import { TodoUpdate } from '../models/TodoUpdate'
 export class TodoAccessModel {
   public constructor(
     private readonly documentClient: DocumentClient = new AWS.DynamoDB.DocumentClient(),
-    private readonly todosTable = process.env.TODOS_TABLE
+    private readonly todosTable = process.env.TODOS_TABLE,
+    private readonly userIdIndex = process.env.USER_ID_INDEX
   ) {}
 
   public async getAllTodoItems(userId: string): Promise<TodoItem[]> {
     const result = await this.documentClient
       .query({
         TableName: this.todosTable,
+        IndexName: this.userIdIndex,
         KeyConditionExpression: 'userId = :userId',
-        ExpressionAttributeValues: { ':userId': userId }
+        ExpressionAttributeValues: { ':userId': userId },
+        ScanIndexForward: false
       })
       .promise()
 
@@ -22,15 +25,12 @@ export class TodoAccessModel {
     return items as TodoItem[]
   }
 
-  public async getTodoItemById(
-    todoId: string,
-    userId: string
-  ): Promise<TodoItem> {
+  public async getTodoItemById(todoId: string): Promise<TodoItem> {
     const result = await this.documentClient
       .query({
         TableName: this.todosTable,
-        KeyConditionExpression: 'todoId = :todoId and userId = :userId',
-        ExpressionAttributeValues: { ':todoId': todoId, ':userId': userId }
+        KeyConditionExpression: 'todoId = :todoId',
+        ExpressionAttributeValues: { ':todoId': todoId }
       })
       .promise()
 
@@ -48,13 +48,12 @@ export class TodoAccessModel {
 
   public async updateTodoItem(
     todoId: string,
-    createdAt: string,
     todoUpdate: TodoUpdate
   ): Promise<void> {
     this.documentClient
       .update({
         TableName: this.todosTable,
-        Key: { todoId, createdAt },
+        Key: { todoId },
         UpdateExpression: 'set #n = :name, done = :done, dueDate = :dueDate',
         ExpressionAttributeValues: {
           ':name': todoUpdate.name,
@@ -69,13 +68,12 @@ export class TodoAccessModel {
 
   public async setTodoAttachmentUrl(
     todoId: string,
-    userId: string,
     attachmentUrl: string
   ): Promise<void> {
     this.documentClient
       .update({
         TableName: this.todosTable,
-        Key: { todoId, userId },
+        Key: { todoId },
         UpdateExpression: 'set attachmentUrl = :attachmentUrl',
         ExpressionAttributeValues: { ':attachmentUrl': attachmentUrl },
         ReturnValues: 'UPDATED_NEW'
@@ -83,9 +81,9 @@ export class TodoAccessModel {
       .promise()
   }
 
-  public async deleteTodoItem(todoId: string, userId: string): Promise<void> {
+  public async deleteTodoItem(todoId: string): Promise<void> {
     this.documentClient
-      .delete({ TableName: this.todosTable, Key: { userId, todoId } })
+      .delete({ TableName: this.todosTable, Key: { todoId } })
       .promise()
   }
 }

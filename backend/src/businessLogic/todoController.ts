@@ -7,6 +7,10 @@ import { UpdateTodoRequest } from '../requests/UpdateTodoRequest'
 
 const todoAccessModel = new TodoAccessModel()
 
+export async function getTodoById(todoId: string): Promise<TodoItem> {
+  return todoAccessModel.getTodoItemById(todoId)
+}
+
 export async function getAllTodos(userId: string): Promise<TodoItem[]> {
   return todoAccessModel.getAllTodoItems(userId)
 }
@@ -27,28 +31,20 @@ export async function createTodo(
   })
 }
 
-export async function update(
+export async function updateTodo(
   todoId: string,
-  updateTodoRequest: UpdateTodoRequest,
-  userId: string
+  updateTodoRequest: UpdateTodoRequest
 ): Promise<void> {
-  const todo = await todoAccessModel.getTodoItemById(todoId, userId)
-  todoAccessModel.updateTodoItem(todo.todoId, todo.createdAt, updateTodoRequest)
+  await todoAccessModel.updateTodoItem(todoId, updateTodoRequest)
 }
 
-export async function deleteTodo(
-  todoId: string,
-  userId: string
-): Promise<void> {
-  const todo = await todoAccessModel.getTodoItemById(todoId, userId)
-  await todoAccessModel.deleteTodoItem(todo.todoId, todo.userId)
+export async function deleteTodo(todoId: string): Promise<void> {
+  await todoAccessModel.deleteTodoItem(todoId)
 }
 
 export async function setAttachmentUrl(
   todoId: string,
-  attachmentUrl: string,
-  userId: string
+  attachmentUrl: string
 ): Promise<void> {
-  const todo = await todoAccessModel.getTodoItemById(todoId, userId)
-  todoAccessModel.setTodoAttachmentUrl(todo.todoId, todo.userId, attachmentUrl)
+  await todoAccessModel.setTodoAttachmentUrl(todoId, attachmentUrl)
 }

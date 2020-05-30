@@ -6,33 +6,42 @@ import {
 } from 'aws-lambda'
 import * as middy from 'middy'
 import { cors } from 'middy/middlewares'
-import * as AWS from 'aws-sdk'
 import { getUserId } from '../utils'
 import { UpdateTodoRequest } from '../../requests/UpdateTodoRequest'
-
-const documentClient = new AWS.DynamoDB.DocumentClient()
-const todosTable = process.env.TODOS_TABLE
+import { updateTodo, getTodoById } from '../../businessLogic/todoController'
 
 const updateTodoHandler: APIGatewayProxyHandler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   const todoId = event.pathParameters.todoId
-  const updatedTodo: UpdateTodoRequest = JSON.parse(event.body)
+  const todoItem = await getTodoById(todoId)
 
-  const updatedItem = {
-    todoId: todoId,
-    userId: getUserId(event),
-    ...updatedTodo
+  if (!todoItem) {
+    return {
+      statusCode: 404,
+      body: JSON.stringify({
+        statusMessage: 'No such todo item exists.'
+      })
+    }
   }
 
-  await documentClient
-    .put({ TableName: todosTable, Item: updatedItem })
-    .promise()
+  if (todoItem.userId !== getUserId(event)) {
+    return {
+      statusCode: 403,
+      body: JSON.stringify({
+        statusMessage:
+          'User does not have sufficient permission to update this todo item.'
+      })
+    }
+  }
+
+  const updatedTodo: UpdateTodoRequest = JSON.parse(event.body)
+  await updateTodo(todoId, updatedTodo)
 
   return {
     statusCode: 200,
     body: JSON.stringify({
-      updatedItem
+      statusMessage: 'Todo item updated successfully.'
     })
   }
 }

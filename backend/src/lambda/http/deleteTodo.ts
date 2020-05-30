@@ -6,19 +6,35 @@ import {
 } from 'aws-lambda'
 import * as middy from 'middy'
 import { cors } from 'middy/middlewares'
-import * as AWS from 'aws-sdk'
-
-const documentClient = new AWS.DynamoDB.DocumentClient()
-const todosTable = process.env.TODOS_TABLE
+import { deleteTodo, getTodoById } from '../../businessLogic/todoController'
+import { getUserId } from '../utils'
 
 const deleteTodoHandler: APIGatewayProxyHandler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   const todoId = event.pathParameters.todoId
+  const todoItem = await getTodoById(todoId)
 
-  await documentClient
-    .delete({ TableName: todosTable, Key: { todoId: todoId } })
-    .promise()
+  if (!todoItem) {
+    return {
+      statusCode: 404,
+      body: JSON.stringify({
+        statusMessage: 'No such todo item exists.'
+      })
+    }
+  }
+
+  if (todoItem.userId !== getUserId(event)) {
+    return {
+      statusCode: 403,
+      body: JSON.stringify({
+        statusMessage:
+          'User does not have sufficient permission to delete this todo item.'
+      })
+    }
+  }
+
+  await deleteTodo(todoId)
 
   return {
     statusCode: 200,
