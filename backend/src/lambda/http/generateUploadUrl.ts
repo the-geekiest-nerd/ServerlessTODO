@@ -13,7 +13,9 @@ import {
   getTodoById
 } from '../../businessLogic/todoController'
 import { getUserId } from '../utils'
+import { createLogger } from '../../utils/logger'
 
+const logger = createLogger('generateSignedURLHandler')
 const bucketName = process.env.S3_BUCKET
 const urlExpiration = process.env.SIGNED_URL_EXPIRATION
 
@@ -21,23 +23,29 @@ const generateSignedURLHandler: APIGatewayProxyHandler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   const todoId = event.pathParameters.todoId
+  logger.info(`Attaching image to todo item: ${todoId}`)
   const todoItem = await getTodoById(todoId)
 
   if (!todoItem) {
+    logger.error(`No todo item with id ${todoId} exists`)
     return {
       statusCode: 404,
       body: JSON.stringify({
-        statusMessage: 'No such todo item exists.'
+        statusMessage: 'No such todo item exists'
       })
     }
   }
 
-  if (todoItem.userId !== getUserId(event)) {
+  const userId = getUserId(event)
+  if (todoItem.userId !== userId) {
+    logger.error(
+      `Todo item with id ${todoId} does not belong to user ${userId}`
+    )
     return {
       statusCode: 403,
       body: JSON.stringify({
         statusMessage:
-          'User does not have sufficient permission to add attachment image to this todo item.'
+          'User does not have sufficient permission to add attachment image to this todo item'
       })
     }
   }
@@ -49,6 +57,8 @@ const generateSignedURLHandler: APIGatewayProxyHandler = async (
 
   const imageUrl = `https://${bucketName}.s3.amazonaws.com/${imageId}`
   setAttachmentUrl(todoId, imageUrl)
+  logger.info(`Attached image url to todo item: ${todoId}`)
+  logger.info('Generating signed url for S3 upload')
 
   const url = s3.getSignedUrl('putObject', {
     Bucket: bucketName,
