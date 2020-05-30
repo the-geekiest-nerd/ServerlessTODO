@@ -6,33 +6,23 @@ import {
 } from 'aws-lambda'
 import * as middy from 'middy'
 import { cors } from 'middy/middlewares'
-import * as AWS from 'aws-sdk'
 import { getUserId } from '../utils'
+import { getAllTodos } from '../../businessLogic/todoController'
+import { createLogger } from '../../utils/logger'
 
-const documentClient = new AWS.DynamoDB.DocumentClient()
-const todosTable = process.env.TODOS_TABLE
-const userIdIndex = process.env.USER_ID_INDEX
+const logger = createLogger('getAllTodosHandler')
 
 const getAllTodosHandler: APIGatewayProxyHandler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   const userId = getUserId(event)
-
-  const result = await documentClient
-    .query({
-      TableName: todosTable,
-      IndexName: userIdIndex,
-      KeyConditionExpression: 'userId = :userId',
-      ExpressionAttributeValues: {
-        ':userId': userId
-      },
-      ScanIndexForward: false
-    })
-    .promise()
+  logger.info(`Fetching all todo items for user: ${userId}`)
+  const items = await getAllTodos(userId)
+  logger.info(`Fetch completed for all todo items for user: ${userId}`)
 
   return {
     statusCode: 200,
-    body: JSON.stringify({ items: result.Items })
+    body: JSON.stringify({ items })
   }
 }
 
