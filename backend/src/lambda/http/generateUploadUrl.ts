@@ -4,6 +4,8 @@ import {
   APIGatewayProxyResult,
   APIGatewayProxyHandler
 } from 'aws-lambda'
+import * as middy from 'middy'
+import { cors } from 'middy/middlewares'
 import * as AWS from 'aws-sdk'
 import * as uuid from 'uuid'
 
@@ -12,7 +14,7 @@ const todosTable = process.env.TODOS_TABLE
 const bucketName = process.env.S3_BUCKET
 const urlExpiration = process.env.SIGNED_URL_EXPIRATION
 
-export const handler: APIGatewayProxyHandler = async (
+const generateSignedURLHandler: APIGatewayProxyHandler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   const todoId = event.pathParameters.todoId
@@ -42,13 +44,13 @@ export const handler: APIGatewayProxyHandler = async (
 
   return {
     statusCode: 201,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Credentials': true
-    },
     body: JSON.stringify({
       imageUrl: imageUrl,
       uploadUrl: url
     })
   }
 }
+
+export const handler = middy(generateSignedURLHandler).use(
+  cors({ credentials: true })
+)

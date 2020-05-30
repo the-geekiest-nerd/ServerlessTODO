@@ -4,6 +4,8 @@ import {
   APIGatewayProxyHandler,
   APIGatewayProxyResult
 } from 'aws-lambda'
+import * as middy from 'middy'
+import { cors } from 'middy/middlewares'
 import * as AWS from 'aws-sdk'
 import * as uuid from 'uuid'
 import { getUserId } from '../utils'
@@ -12,7 +14,7 @@ import { CreateTodoRequest } from '../../requests/CreateTodoRequest'
 const documentClient = new AWS.DynamoDB.DocumentClient()
 const todosTable = process.env.TODOS_TABLE
 
-export const handler: APIGatewayProxyHandler = async (
+const createTodoHandler: APIGatewayProxyHandler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   const todoId = uuid.v4()
@@ -27,10 +29,8 @@ export const handler: APIGatewayProxyHandler = async (
   await documentClient.put({ TableName: todosTable, Item: item }).promise()
   return {
     statusCode: 201,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Credentials': true
-    },
     body: JSON.stringify({ item: newTodo })
   }
 }
+
+export const handler = middy(createTodoHandler).use(cors({ credentials: true }))

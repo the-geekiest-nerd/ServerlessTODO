@@ -4,12 +4,14 @@ import {
   APIGatewayProxyResult,
   APIGatewayProxyHandler
 } from 'aws-lambda'
+import * as middy from 'middy'
+import { cors } from 'middy/middlewares'
 import * as AWS from 'aws-sdk'
 
 const documentClient = new AWS.DynamoDB.DocumentClient()
 const todosTable = process.env.TODOS_TABLE
 
-export const handler: APIGatewayProxyHandler = async (
+const deleteTodoHandler: APIGatewayProxyHandler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   const todoId = event.pathParameters.todoId
@@ -20,12 +22,10 @@ export const handler: APIGatewayProxyHandler = async (
 
   return {
     statusCode: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Credentials': true
-    },
     body: JSON.stringify({
       statusMessage: 'Item removed successfully'
     })
   }
 }
+
+export const handler = middy(deleteTodoHandler).use(cors({ credentials: true }))

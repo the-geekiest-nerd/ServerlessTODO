@@ -4,6 +4,8 @@ import {
   APIGatewayProxyResult,
   APIGatewayProxyHandler
 } from 'aws-lambda'
+import * as middy from 'middy'
+import { cors } from 'middy/middlewares'
 import * as AWS from 'aws-sdk'
 import { getUserId } from '../utils'
 
@@ -11,7 +13,7 @@ const documentClient = new AWS.DynamoDB.DocumentClient()
 const todosTable = process.env.TODOS_TABLE
 const userIdIndex = process.env.USER_ID_INDEX
 
-export const handler: APIGatewayProxyHandler = async (
+const getAllTodosHandler: APIGatewayProxyHandler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   const userId = getUserId(event)
@@ -30,10 +32,10 @@ export const handler: APIGatewayProxyHandler = async (
 
   return {
     statusCode: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Credentials': true
-    },
     body: JSON.stringify({ items: result.Items })
   }
 }
+
+export const handler = middy(getAllTodosHandler).use(
+  cors({ credentials: true })
+)
